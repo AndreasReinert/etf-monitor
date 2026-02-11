@@ -13,7 +13,7 @@ on:
     
     # 2. Hauptzeit: 07:00 bis 20:45 UTC (= 08:00 bis 21:45 DE Winterzeit)
     # Läuft alle 15 Minuten (0, 15, 30, 45)
-    - cron: '*/15 7-20 * * 1-5'
+    - cron: '*/29 7-20 * * 1-5'
     
     # 3. Abschluss: 21:00 UTC (= 22:00 DE Winterzeit)
     # Läuft nur einmalig zur vollen Stunde als letzter Check
@@ -55,3 +55,4 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
+
