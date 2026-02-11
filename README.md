@@ -1,6 +1,6 @@
 # 📈 ETF Crash-Monitor & Portfolio Tracker
 
-Ein vollautomatisierter Python-Bot, der auf **GitHub Actions** läuft. Er überwacht ETF-Kurse stündlich, berechnet den Abstand zum All-Time-High (ATH) und sendet detaillierte Berichte sowie Crash-Warnungen via **Telegram**.
+Ein vollautomatisierter Python-Bot, der auf **GitHub Actions** läuft. Er überwacht ETF-Kurse alle 15 Minuten, berechnet den Abstand zum All-Time-High (ATH) und sendet detaillierte Berichte sowie Crash-Warnungen via **Telegram**.
 
 ![Python](https://img.shields.io/badge/Python-3.10-blue)
 ![Status](https://img.shields.io/badge/Status-Active-success)
@@ -40,7 +40,7 @@ Gehe im Repository zu `Settings` -> `Secrets and variables` -> `Actions` und ers
 * `PORTFOLIO_JSON`: Deine Bestandsdaten im JSON-Format (siehe unten).
 
 ### 3. Das Portfolio-JSON Format
-Das Skript erwartet, dass das Secret `PORTFOLIO_JSON` folgenden Aufbau hat:
+Das Skript erwartet, dass das Secret `PORTFOLIO_JSON` folgenden Aufbau hat, kopiere von { bis } alles ins Secret:
 
 ```json
 {
