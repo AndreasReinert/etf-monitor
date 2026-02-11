@@ -2,7 +2,24 @@ name: ETF Monitor
 
 on:
   schedule:
-    - cron: '0 */1 * * *' # Alle 1 Stunden
+    # --- ZEITPLAN (UTC) ---
+    # Hinweis: GitHub Server nutzen UTC-Zeit!
+    # Aktuell (Winter): Deutschland = UTC + 1 Stunde
+    # Im Sommer: Deutschland = UTC + 2 Stunden (dann verschiebt sich alles um 1h)
+    
+    # 1. Start am Morgen: 06:30 UTC (= 07:30 DE Winterzeit)
+    # Läuft um XX:30 und XX:45
+    - cron: '30,45 6 * * 1-5'
+    
+    # 2. Hauptzeit: 07:00 bis 20:45 UTC (= 08:00 bis 21:45 DE Winterzeit)
+    # Läuft alle 15 Minuten (0, 15, 30, 45)
+    - cron: '*/15 7-20 * * 1-5'
+    
+    # 3. Abschluss: 21:00 UTC (= 22:00 DE Winterzeit)
+    # Läuft nur einmalig zur vollen Stunde als letzter Check
+    - cron: '0 21 * * 1-5'
+
+  # Erlaubt den manuellen Start per Klick (zum Testen)
   workflow_dispatch:
 
 jobs:
@@ -10,25 +27,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Code aus dem Repo holen
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 2. Python 3.10 einrichten
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
 
+      # 3. Bibliotheken installieren (yfinance, requests, python-dotenv)
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
 
-      # --- NEUER SCHRITT: Datei aus Secret erstellen ---
+      # 4. WICHTIG: Die portfolio.json aus dem GitHub Secret erstellen
+      # Dies schützt deine Finanzdaten in einem öffentlichen Repo!
       - name: Create Portfolio JSON
         run: |
           echo '${{ secrets.PORTFOLIO_JSON }}' > portfolio.json
-        # Die einfachen Anführungszeichen '' sind wichtig, damit JSON-Klammern erhalten bleiben!
 
+      # 5. Das eigentliche Python-Skript starten
       - name: Run Monitor Script
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
