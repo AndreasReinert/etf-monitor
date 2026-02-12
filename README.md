@@ -1,6 +1,6 @@
 # 📈 ETF Crash-Monitor & Portfolio Tracker
 
-Ein vollautomatisierter Python-Bot, der auf **GitHub Actions** läuft. Er überwacht ETF-Kurse alle 15 Minuten, berechnet den Abstand zum All-Time-High (ATH) und sendet detaillierte Berichte sowie Crash-Warnungen via **Telegram**.
+Ein vollautomatisierter Python-Bot, der auf **GitHub Actions** läuft. Er überwacht ETF-Kurse alle 60 Minuten, berechnet den Abstand zum All-Time-High (ATH) und sendet detaillierte Berichte sowie Crash-Warnungen via **Telegram**.
 
 ![Python](https://img.shields.io/badge/Python-3.10-blue)
 ![Status](https://img.shields.io/badge/Status-Active-success)
