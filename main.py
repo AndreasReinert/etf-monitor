@@ -205,7 +205,7 @@ def analyze_market():
 
     total_icon = "🤑" if total_pl >= 0 else "💸"
     header = (
-        f"📊 *ATH-MONITOR REPORT*\n"
+        f"📊 *ETF-MONITOR REPORT*\n"
         f"Gesamtwert: {total_portfolio_value:.2f}€\n"
         f"{total_icon} Gesamt P/L: *{total_pl:+.2f}€* "
         f"({total_pl_pct:+.2f}%)\n"
@@ -229,6 +229,7 @@ def analyze_market():
 
 
 if __name__ == "__main__":
-    print("🚀 Starte ATH-Monitor...")
+    print("🚀 Starte ETF-Monitor...")
     analyze_market()
     print("🏁 Fertig.")
+
