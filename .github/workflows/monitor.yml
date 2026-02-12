@@ -3,21 +3,15 @@ name: ETF Monitor
 on:
   schedule:
     # --- ZEITPLAN (UTC) ---
-    # Hinweis: GitHub Server nutzen UTC-Zeit!
+    # GitHub Server nutzen UTC-Zeit!
     # Aktuell (Winter): Deutschland = UTC + 1 Stunde
-    # Im Sommer: Deutschland = UTC + 2 Stunden (dann verschiebt sich alles um 1h)
+    # Im Sommer: Deutschland = UTC + 2 Stunden (dann verschiebt sich alles um 1h nach hinten)
     
-    # 1. Start am Morgen: 06:30 UTC (= 07:30 DE Winterzeit)
-    # Läuft um XX:30 und XX:45
-    - cron: '30,45 6 * * 1-5'
-    
-    # 2. Hauptzeit: 07:00 bis 20:45 UTC (= 08:00 bis 21:45 DE Winterzeit)
-    # Läuft alle 15 Minuten (0, 15, 30, 45)
-    - cron: '*/29 7-20 * * 1-5'
-    
-    # 3. Abschluss: 21:00 UTC (= 22:00 DE Winterzeit)
-    # Läuft nur einmalig zur vollen Stunde als letzter Check
-    - cron: '0 21 * * 1-5'
+    # Ausführung: Stündlich zur vollen Stunde (Minute 0)
+    # Start: 07:00 UTC (= 08:00 DE Winterzeit)
+    # Ende:  17:00 UTC (= 18:00 DE Winterzeit)
+    # Tage:  Montag bis Freitag (1-5)
+    - cron: '0 7-17 * * 1-5'
 
   # Erlaubt den manuellen Start per Klick (zum Testen)
   workflow_dispatch:
@@ -44,7 +38,6 @@ jobs:
           pip install -r requirements.txt
 
       # 4. WICHTIG: Die portfolio.json aus dem GitHub Secret erstellen
-      # Dies schützt deine Finanzdaten in einem öffentlichen Repo!
       - name: Create Portfolio JSON
         run: |
           echo '${{ secrets.PORTFOLIO_JSON }}' > portfolio.json
@@ -55,4 +48,3 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python main.py
-
