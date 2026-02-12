@@ -2,7 +2,6 @@ import json
 import os
 import signal
 import sys
-import time
 
 import requests
 import yfinance as yf
@@ -93,7 +92,8 @@ def send_telegram(message):
 
 def analyze_market():
     portfolio_data = load_portfolio()
-    report_lines = []
+    report_in_depot = []
+    report_watchlist = []
     alarms = []
 
     # Wechselkurs einmalig holen
@@ -102,7 +102,8 @@ def analyze_market():
     total_portfolio_value = 0
     total_invested = 0
 
-    print(f"{'Name':<25} {'Kurs (EUR)':<12} {'ATH (EUR)':<12} {'Abstand':<10} {'P/L %'}")
+    print(f"{'Name':<25} {'Kurs (EUR)':<12} {'ATH (EUR)':<12} "
+          f"{'Abstand':<10} {'P/L %'}")
     print("-" * 75)
 
     for config in ETFS_CONFIG:
@@ -116,7 +117,6 @@ def analyze_market():
         name = pf_entry.get("name", ticker_symbol)
 
         try:
-            # Marktdaten holen (Max für ATH)
             ticker = yf.Ticker(ticker_symbol)
             hist = ticker.history(period="max")
 
@@ -136,12 +136,23 @@ def analyze_market():
                 ath_price = ath_price_raw
 
             drawdown = ((current_price - ath_price) / ath_price) * 100
+            qty = pf_entry.get('quantity', 0)
+
+            # --- Icon Logik ---
+            t_vals = THRESHOLDS[group]
+            if drawdown <= t_vals[2]:
+                alert_icon = "🚨 *ALL IN*"
+            elif drawdown <= t_vals[1]:
+                alert_icon = "🔴 *NACHKAUF 2*"
+            elif drawdown <= t_vals[0]:
+                alert_icon = "🟠 *NACHKAUF 1*"
+            elif drawdown <= -10:
+                alert_icon = "🟡 *Warnung*"
+            else:
+                # Blau für Watchlist, Grün für Bestand
+                alert_icon = "✅" if qty > 0 else "🔵"
 
             # --- Portfolio Logik ---
-            my_stats = ""
-            qty = pf_entry.get('quantity', 0)
-            profit_pct = 0.0
-
             if qty > 0:
                 buy_price = pf_entry.get('buy_price', 0)
                 invested = qty * buy_price
@@ -155,32 +166,15 @@ def analyze_market():
                 pl_icon = "📈" if profit_abs >= 0 else "📉"
                 my_stats = (
                     f"\n   └ 💼 Inv: {invested:.0f}€ ({qty} Stk.)"
-                    f"\n   └ {pl_icon} P/L: *{profit_abs:+.2f}€* ({profit_pct:+.2f}%)"
+                    f"\n   └ {pl_icon} P/L: *{profit_abs:+.2f}€* "
+                    f"({profit_pct:+.2f}%)"
                 )
-
-                print(
-                    f"{name[:23]:<25} {current_price:<12.2f} "
-                    f"{ath_price:<12.2f} {drawdown:<10.1f} {profit_pct:+.2f}%"
-                )
+                print(f"{name[:23]:<25} {current_price:<12.2f} "
+                      f"{ath_price:<12.2f} {drawdown:<10.1f} {profit_pct:+.2f}%")
             else:
-                my_stats = "\n   └ ⚪ *Nicht im Depot*"
-                print(
-                    f"{name[:23]:<25} {current_price:<12.2f} "
-                    f"{ath_price:<12.2f} {drawdown:<10.1f} -"
-                )
-
-            # --- Alarm Logik ---
-            alert_icon = "✅"
-            t_vals = THRESHOLDS[group]
-
-            if drawdown <= t_vals[2]:
-                alert_icon = "🚨 *ALL IN*"
-            elif drawdown <= t_vals[1]:
-                alert_icon = "🔴 *NACHKAUF 2*"
-            elif drawdown <= t_vals[0]:
-                alert_icon = "🟠 *NACHKAUF 1*"
-            elif drawdown <= -10:
-                alert_icon = "🟡 *Warnung*"
+                my_stats = "\n   └ ⚪ *Kein Bestand*"
+                print(f"{name[:23]:<25} {current_price:<12.2f} "
+                      f"{ath_price:<12.2f} {drawdown:<10.1f} -")
 
             line = (
                 f"{alert_icon} *{name}*\n"
@@ -188,7 +182,12 @@ def analyze_market():
                 f"   📉 Drawdown: *{drawdown:.2f}%*"
                 f"{my_stats}"
             )
-            report_lines.append(line)
+
+            # Sortierung für den Report
+            if qty > 0:
+                report_in_depot.append(line)
+            else:
+                report_watchlist.append(line)
 
             if drawdown <= t_vals[0]:
                 alarms.append(
@@ -208,11 +207,18 @@ def analyze_market():
     header = (
         f"📊 *ATH-MONITOR REPORT*\n"
         f"Gesamtwert: {total_portfolio_value:.2f}€\n"
-        f"{total_icon} Gesamt P/L: *{total_pl:+.2f}€* ({total_pl_pct:+.2f}%)\n"
+        f"{total_icon} Gesamt P/L: *{total_pl:+.2f}€* "
+        f"({total_pl_pct:+.2f}%)\n"
         f"-----------------------------------\n\n"
     )
 
-    full_msg = header + "\n\n".join(report_lines)
+    # Report Zusammenbau: Bestand zuerst, dann Watchlist
+    depot_str = ("*DEPO-BESTAND:*\n" + "\n\n".join(report_in_depot)
+                 if report_in_depot else "")
+    watch_str = ("\n\n*WATCHLIST:*\n" + "\n\n".join(report_watchlist)
+                 if report_watchlist else "")
+
+    full_msg = header + depot_str + watch_str
 
     if alarms:
         full_msg = (
