@@ -18,18 +18,18 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 ETFS_CONFIG = [
     # ISIN: IE00BFY0GT14 (SPDR World)
     {"ticker": "SPPW.DE", "group": "A"},
-    # ISIN: IE00BK5BQT80 (Vanguard All-World)
-    {"ticker": "VWCE.DE", "group": "A"},
     # ISIN: IE00BQN1K786 (Europe Momentum)
     {"ticker": "CEMR.DE", "group": "A"},
-    # ISIN: IE00BTJRMP35 (Emerging Markets)
-    {"ticker": "XMME.DE", "group": "A"},
-    # ISIN: LU1829219390 (Amundi Banks)
-    {"ticker": "BNKE.PA", "group": "B"},
     # ISIN: IE00BYQCZJ13 (Japan Hedged)
     {"ticker": "WTIF.DE", "group": "A"},
+    # ISIN: LU1829219390 (Amundi Banks)
+    {"ticker": "BNKE.PA", "group": "B"},
+    # ISIN: IE00BK5BQT80 (Vanguard All-World)
+    {"ticker": "VWCE.DE", "group": "A"},
     # ISIN: LU1215828218 (EMU CHF Hedged)
     {"ticker": "XDUE.SW", "group": "A"},
+    # ISIN: IE00BTJRMP35 (Emerging Markets)
+    {"ticker": "XMME.DE", "group": "A"},
 ]
 
 # Alert thresholds (drawdown from ATH in %)
