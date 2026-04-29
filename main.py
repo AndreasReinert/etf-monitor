@@ -56,7 +56,42 @@ class GracefulShutdown:
 shutdown_monitor = GracefulShutdown()
 
 
-# --- FUNCTIONS ---
+# --- FORMATTING HELPERS ---
+def fmt_eur(value, decimals=2, signed=False):
+    """Formats a number with thousands separator (German style: 1.234,56)."""
+    fmt = f"{{:{'+' if signed else ''},.{decimals}f}}"
+    s = fmt.format(value)
+    # Convert US-style 1,234.56 to German-style 1.234,56
+    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
+    return s
+
+
+def fmt_pct(value, decimals=2, signed=True):
+    """Formats a percentage value (German decimal comma)."""
+    fmt = f"{{:{'+' if signed else ''}.{decimals}f}}"
+    return fmt.format(value).replace(".", ",")
+
+
+def progress_bar(current_dd, thresholds, width=12):
+    """
+    Visual progress bar showing how deep the drawdown is, scaled
+    against the deepest "ALL IN" threshold (=full bar).
+    """
+    deepest = thresholds[2]  # e.g. -33% or -50%
+    if current_dd >= 0:
+        ratio = 0.0
+    else:
+        ratio = min(abs(current_dd) / abs(deepest), 1.0)
+    filled = int(round(ratio * width))
+    return "▓" * filled + "░" * (width - filled)
+
+
+def escape_md(text):
+    """Sanitise text for Telegram Markdown (legacy mode)."""
+    return str(text).replace("_", " ").replace("*", "")
+
+
+# --- DATA FUNCTIONS ---
 def load_portfolio():
     try:
         with open('portfolio.json', 'r') as f:
@@ -90,6 +125,114 @@ def send_telegram(message):
         print(f"❌ Error sending message: {e}")
 
 
+# --- MESSAGE BUILDERS ---
+def build_holding_card(name, alert_icon, trend_icon, current_price, ath_price,
+                       drawdown, ytd_pct, max_dd_ytd, recovery_pct, qty,
+                       buy_price, current_value, profit_abs, profit_pct,
+                       dd_bar):
+    """Builds the message card for an ETF position that is held.
+    The P/L block is the visual hero of the card.
+    """
+    pl_arrow = "📈" if profit_abs >= 0 else "📉"
+    pl_dot = "🟢" if profit_abs >= 0 else "🔴"
+
+    # Quantity display: integer if whole number, else 4 decimals (German style)
+    if float(qty).is_integer():
+        qty_str = f"{int(qty)}"
+    else:
+        qty_str = f"{qty:.4f}".replace(".", ",")
+
+    # Hero P/L block — most important info, framed for emphasis
+    pl_block = (
+        f"┌─ 💰 *P/L* ─────────────\n"
+        f"│ {pl_dot} *{fmt_eur(profit_abs, signed=True)} €*  "
+        f"({fmt_pct(profit_pct)}%) {pl_arrow}\n"
+        f"│ Einstand: `{fmt_eur(buy_price)} €`  →  "
+        f"Aktuell: `{fmt_eur(current_price)} €`\n"
+        f"│ {qty_str} Stk · Wert: `{fmt_eur(current_value)} €`\n"
+        f"└────────────────────────"
+    )
+
+    # Drawdown block with visual bar
+    if recovery_pct > 0:
+        recovery_line = (
+            f"\n   🔄 Recovery: *+{fmt_pct(recovery_pct, signed=False)}%* nötig"
+        )
+    else:
+        recovery_line = ""
+
+    dd_block = (
+        f"📉 DD: *{fmt_pct(drawdown)}%*  │  ATH: `{fmt_eur(ath_price)} €`\n"
+        f"   `{dd_bar}`"
+        f"{recovery_line}"
+    )
+
+    # YTD line
+    ytd_dot = "🟢" if ytd_pct >= 0 else "🔴"
+    ytd_block = (
+        f"📅 YTD: {ytd_dot} *{fmt_pct(ytd_pct)}%*  "
+        f"│  Max DD: `{fmt_pct(max_dd_ytd)}%`"
+    )
+
+    card = (
+        f"{alert_icon} {trend_icon} *{escape_md(name)}*\n"
+        f"{pl_block}\n"
+        f"{dd_block}\n"
+        f"{ytd_block}"
+    )
+    return card
+
+
+def build_watchlist_card(name, alert_icon, trend_icon, current_price,
+                         ath_price, drawdown, ytd_pct, max_dd_ytd,
+                         recovery_pct, dd_bar):
+    """Builds the message card for a watchlist ETF (no position)."""
+    if recovery_pct > 0:
+        recovery_line = (
+            f"\n   🔄 Recovery: *+{fmt_pct(recovery_pct, signed=False)}%* nötig"
+        )
+    else:
+        recovery_line = ""
+
+    ytd_dot = "🟢" if ytd_pct >= 0 else "🔴"
+
+    card = (
+        f"{alert_icon} {trend_icon} *{escape_md(name)}*  ⚪️ _watchlist_\n"
+        f"   Kurs: `{fmt_eur(current_price)} €`  │  "
+        f"ATH: `{fmt_eur(ath_price)} €`\n"
+        f"   📉 DD: *{fmt_pct(drawdown)}%*  `{dd_bar}`"
+        f"{recovery_line}\n"
+        f"   📅 YTD: {ytd_dot} *{fmt_pct(ytd_pct)}%*  "
+        f"│  Max DD: `{fmt_pct(max_dd_ytd)}%`"
+    )
+    return card
+
+
+def build_header(total_value, total_invested, total_pl, total_pl_pct,
+                 portfolio_ytd_pct):
+    """Portfolio header with prominent overall P/L."""
+    pl_dot = "🟢" if total_pl >= 0 else "🔴"
+    pl_arrow = "📈" if total_pl >= 0 else "📉"
+    ytd_dot = "🟢" if portfolio_ytd_pct >= 0 else "🔴"
+
+    header = (
+        f"📊 *ATH MONITOR REPORT*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"\n"
+        f"┌─ 💎 *PORTFOLIO* ───────\n"
+        f"│ Wert:    `{fmt_eur(total_value)} €`\n"
+        f"│ Invest:  `{fmt_eur(total_invested)} €`\n"
+        f"│\n"
+        f"│ {pl_dot} *P/L: {fmt_eur(total_pl, signed=True)} €*\n"
+        f"│    ({fmt_pct(total_pl_pct)}%) {pl_arrow}\n"
+        f"│\n"
+        f"│ {ytd_dot} YTD: *{fmt_pct(portfolio_ytd_pct)}%*\n"
+        f"└────────────────────────\n"
+    )
+    return header
+
+
+# --- MAIN ANALYSIS ---
 def analyze_market():
     portfolio_data = load_portfolio()
     report_holdings = []
@@ -181,8 +324,10 @@ def analyze_market():
             elif drawdown <= -10:
                 alert_icon = "🟡 *Warning*"
             else:
-                # Blue for watchlist, green for holdings
                 alert_icon = "✅" if qty > 0 else "🔵"
+
+            # Drawdown progress bar
+            dd_bar = progress_bar(drawdown, t_vals, width=12)
 
             # --- Portfolio logic ---
             if qty > 0:
@@ -204,46 +349,50 @@ def analyze_market():
                     total_value_ytd_start += qty * ytd_start_eur
                     total_value_now_for_ytd += qty * current_price
 
-                pl_icon = "📈" if profit_abs >= 0 else "📉"
-                my_stats = (
-                    f"\n   └ 💼 Inv: {invested:.0f}€ ({qty} pcs)"
-                    f"\n   └ {pl_icon} P/L: *{profit_abs:+.2f}€* "
-                    f"({profit_pct:+.2f}%)"
-                )
                 print(f"{name[:23]:<25} {current_price:<12.2f} "
                       f"{ath_price:<12.2f} {drawdown:<10.1f} "
                       f"{ytd_pct:<+10.2f} {profit_pct:+.2f}%")
+
+                card = build_holding_card(
+                    name=name,
+                    alert_icon=alert_icon,
+                    trend_icon=trend_icon,
+                    current_price=current_price,
+                    ath_price=ath_price,
+                    drawdown=drawdown,
+                    ytd_pct=ytd_pct,
+                    max_dd_ytd=max_dd_ytd,
+                    recovery_pct=recovery_pct,
+                    qty=qty,
+                    buy_price=buy_price,
+                    current_value=current_value,
+                    profit_abs=profit_abs,
+                    profit_pct=profit_pct,
+                    dd_bar=dd_bar,
+                )
+                report_holdings.append(card)
             else:
-                my_stats = "\n   └ ⚪ *No position*"
                 print(f"{name[:23]:<25} {current_price:<12.2f} "
                       f"{ath_price:<12.2f} {drawdown:<10.1f} "
                       f"{ytd_pct:<+10.2f} -")
 
-            # Recovery text only when in drawdown
-            recovery_str = (
-                f"\n   🔄 Recovery needed: *+{recovery_pct:.1f}%*"
-                if recovery_pct > 0 else ""
-            )
-
-            line = (
-                f"{alert_icon} {trend_icon} *{name}*\n"
-                f"   Price: {current_price:.2f}€ (ATH: {ath_price:.2f})\n"
-                f"   📉 Drawdown: *{drawdown:.2f}%*"
-                f"  |  📅 YTD: *{ytd_pct:+.2f}%*\n"
-                f"   📊 Max DD YTD: *{max_dd_ytd:.2f}%*"
-                f"{recovery_str}"
-                f"{my_stats}"
-            )
-
-            # Sort for report: holdings first, then watchlist
-            if qty > 0:
-                report_holdings.append(line)
-            else:
-                report_watchlist.append(line)
+                card = build_watchlist_card(
+                    name=name,
+                    alert_icon=alert_icon,
+                    trend_icon=trend_icon,
+                    current_price=current_price,
+                    ath_price=ath_price,
+                    drawdown=drawdown,
+                    ytd_pct=ytd_pct,
+                    max_dd_ytd=max_dd_ytd,
+                    recovery_pct=recovery_pct,
+                    dd_bar=dd_bar,
+                )
+                report_watchlist.append(card)
 
             if drawdown <= t_vals[0]:
                 alarms.append(
-                    f"⚠️ ACTION: {name} is {drawdown:.1f}% below ATH!"
+                    f"⚠️ {escape_md(name)}: *{fmt_pct(drawdown)}%* unter ATH"
                 )
 
         except Exception as e:
@@ -255,37 +404,44 @@ def analyze_market():
         (total_pl / total_invested * 100) if total_invested > 0 else 0
     )
 
-    total_icon = "🤑" if total_pl >= 0 else "💸"
     portfolio_ytd_pct = (
         ((total_value_now_for_ytd - total_value_ytd_start)
          / total_value_ytd_start * 100)
         if total_value_ytd_start > 0 else 0
     )
-    ytd_icon = "📈" if portfolio_ytd_pct >= 0 else "📉"
-    header = (
-        f"📊 *ATH MONITOR REPORT*\n"
-        f"Total Value: {total_portfolio_value:.2f}€\n"
-        f"{total_icon} Total P/L: *{total_pl:+.2f}€* "
-        f"({total_pl_pct:+.2f}%)\n"
-        f"{ytd_icon} Portfolio YTD: *{portfolio_ytd_pct:+.2f}%*\n"
-        f"-----------------------------------\n\n"
+
+    header = build_header(
+        total_value=total_portfolio_value,
+        total_invested=total_invested,
+        total_pl=total_pl,
+        total_pl_pct=total_pl_pct,
+        portfolio_ytd_pct=portfolio_ytd_pct,
     )
 
-    # Build report: holdings first, then watchlist
-    holdings_str = ("*HOLDINGS:*\n" + "\n\n".join(report_holdings)
-                    if report_holdings else "")
-    watch_str = ("\n\n*WATCHLIST:*\n" + "\n\n".join(report_watchlist)
-                 if report_watchlist else "")
+    # Section dividers
+    holdings_str = (
+        "\n*━━━━━ 💼 HOLDINGS ━━━━━*\n\n"
+        + "\n\n".join(report_holdings)
+        if report_holdings else ""
+    )
+    watch_str = (
+        "\n\n*━━━━━ 👀 WATCHLIST ━━━━━*\n\n"
+        + "\n\n".join(report_watchlist)
+        if report_watchlist else ""
+    )
 
     full_msg = header + holdings_str + watch_str
 
     if alarms:
-        full_msg = (
-            "🚨 *CRASH ALERT* 🚨\n\n" + "\n".join(alarms) + "\n\n"
-            + full_msg
+        alarm_block = (
+            "🚨 *━━━ CRASH ALERT ━━━* 🚨\n\n"
+            + "\n".join(alarms)
+            + "\n\n"
         )
+        full_msg = alarm_block + full_msg
 
     send_telegram(full_msg)
+    return full_msg
 
 
 if __name__ == "__main__":
