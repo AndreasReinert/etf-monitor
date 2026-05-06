@@ -130,11 +130,10 @@ def build_holding_card(name, alert_icon, trend_icon, current_price, ath_price,
                        drawdown, ytd_pct, max_dd_ytd, recovery_pct, qty,
                        buy_price, current_value, profit_abs, profit_pct,
                        dd_bar):
-    """Builds the message card for an ETF position that is held.
-    The P/L block is the visual hero of the card.
-    """
+    """Builds the message card for an ETF position that is held."""
     pl_arrow = "📈" if profit_abs >= 0 else "📉"
     pl_dot = "🟢" if profit_abs >= 0 else "🔴"
+    ytd_dot = "🟢" if ytd_pct >= 0 else "🔴"
 
     # Quantity display: integer if whole number, else 4 decimals (German style)
     if float(qty).is_integer():
@@ -142,43 +141,23 @@ def build_holding_card(name, alert_icon, trend_icon, current_price, ath_price,
     else:
         qty_str = f"{qty:.4f}".replace(".", ",")
 
-    # Hero P/L block — most important info, framed for emphasis
-    pl_block = (
-        f"┌─ 💰 *P/L* ─────────────\n"
-        f"│ {pl_dot} *{fmt_eur(profit_abs, signed=True)} €*  "
-        f"({fmt_pct(profit_pct)}%) {pl_arrow}\n"
-        f"│ Einstand: `{fmt_eur(buy_price)} €`  →  "
-        f"Aktuell: `{fmt_eur(current_price)} €`\n"
-        f"│ {qty_str} Stk · Wert: `{fmt_eur(current_value)} €`\n"
-    )
-
-    # Drawdown block with visual bar
-    if recovery_pct > 0:
-        recovery_line = (
-            f"\n   🔄 Recovery: *+{fmt_pct(recovery_pct, signed=False)}%* nötig"
-        )
-    else:
-        recovery_line = ""
-
-    dd_block = (
-        f"📉 DD: *{fmt_pct(drawdown)}%*  │  ATH: `{fmt_eur(ath_price)} €`\n"
-        f"   `{dd_bar}`"
-        f"{recovery_line}"
-    )
-
-    # YTD line
-    ytd_dot = "🟢" if ytd_pct >= 0 else "🔴"
-    ytd_block = (
-        f"📅 YTD: {ytd_dot} *{fmt_pct(ytd_pct)}%*  "
-        f"│  Max DD: `{fmt_pct(max_dd_ytd)}%`"
-        f"└──────────────────"
+    recovery_line = (
+        f"\n🔄 Recovery: *+{fmt_pct(recovery_pct, signed=False)}%* nötig"
+        if recovery_pct > 0 else ""
     )
 
     card = (
         f"{alert_icon} {trend_icon} *{escape_md(name)}*\n"
-        f"{pl_block}\n"
-        f"{dd_block}\n"
-        f"{ytd_block}"
+        f"▸ 💰 *P/L: {fmt_eur(profit_abs, signed=True)} €*"
+        f"  ({fmt_pct(profit_pct)}%)  {pl_dot} {pl_arrow}\n"
+        f"  Einstand: `{fmt_eur(buy_price)} €`  →  Aktuell: `{fmt_eur(current_price)} €`\n"
+        f"  {qty_str} Stk  ·  Wert: `{fmt_eur(current_value)} €`\n"
+        f"- - - - - - - - - - -\n"
+        f"▸ 📉 DD: *{fmt_pct(drawdown)}%*   ATH: `{fmt_eur(ath_price)} €`\n"
+        f"  `{dd_bar}`"
+        f"{recovery_line}\n"
+        f"- - - - - - - - - - -\n"
+        f"▸ 📅 YTD: {ytd_dot} *{fmt_pct(ytd_pct)}%*   Max DD: `{fmt_pct(max_dd_ytd)}%`"
     )
     return card
 
@@ -187,23 +166,22 @@ def build_watchlist_card(name, alert_icon, trend_icon, current_price,
                          ath_price, drawdown, ytd_pct, max_dd_ytd,
                          recovery_pct, dd_bar):
     """Builds the message card for a watchlist ETF (no position)."""
-    if recovery_pct > 0:
-        recovery_line = (
-            f"\n   🔄 Recovery: *+{fmt_pct(recovery_pct, signed=False)}%* nötig"
-        )
-    else:
-        recovery_line = ""
-
     ytd_dot = "🟢" if ytd_pct >= 0 else "🔴"
+
+    recovery_line = (
+        f"\n  🔄 Recovery: *+{fmt_pct(recovery_pct, signed=False)}%* nötig"
+        if recovery_pct > 0 else ""
+    )
 
     card = (
         f"{alert_icon} {trend_icon} *{escape_md(name)}*  ⚪️ _watchlist_\n"
-        f"   Kurs: `{fmt_eur(current_price)} €`  │  "
-        f"ATH: `{fmt_eur(ath_price)} €`\n"
-        f"   📉 DD: *{fmt_pct(drawdown)}%*  `{dd_bar}`"
+        f"▸ Kurs: `{fmt_eur(current_price)} €`   ATH: `{fmt_eur(ath_price)} €`\n"
+        f"- - - - - - - - - - -\n"
+        f"▸ 📉 DD: *{fmt_pct(drawdown)}%*\n"
+        f"  `{dd_bar}`"
         f"{recovery_line}\n"
-        f"   📅 YTD: {ytd_dot} *{fmt_pct(ytd_pct)}%*  "
-        f"│  Max DD: `{fmt_pct(max_dd_ytd)}%`"
+        f"- - - - - - - - - - -\n"
+        f"▸ 📅 YTD: {ytd_dot} *{fmt_pct(ytd_pct)}%*   Max DD: `{fmt_pct(max_dd_ytd)}%`"
     )
     return card
 
@@ -219,15 +197,15 @@ def build_header(total_value, total_invested, total_pl, total_pl_pct,
         f"📊 *ATH MONITOR REPORT*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"\n"
-        f"┌─ 💎 *PORTFOLIO* ───────\n"
-        f"│ Wert:    `{fmt_eur(total_value)} €`\n"
-        f"│ Invest:  `{fmt_eur(total_invested)} €`\n"
-        f"│\n"
-        f"│ {pl_dot} *P/L: {fmt_eur(total_pl, signed=True)} €*\n"
-        f"│    ({fmt_pct(total_pl_pct)}%) {pl_arrow}\n"
-        f"│\n"
-        f"│ {ytd_dot} YTD: *{fmt_pct(portfolio_ytd_pct)}%*\n"
-        f"└──────────────────\n"
+        f"💎 *PORTFOLIO*\n"
+        f"  Wert:    `{fmt_eur(total_value)} €`\n"
+        f"  Invest:  `{fmt_eur(total_invested)} €`\n"
+        f"\n"
+        f"  {pl_dot} *P/L: {fmt_eur(total_pl, signed=True)} €*\n"
+        f"       ({fmt_pct(total_pl_pct)}%)  {pl_arrow}\n"
+        f"\n"
+        f"  {ytd_dot} YTD: *{fmt_pct(portfolio_ytd_pct)}%*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
     return header
 
@@ -421,12 +399,12 @@ def analyze_market():
     # Section dividers
     holdings_str = (
         "\n*━━━━━ 💼 HOLDINGS ━━━━━*\n\n"
-        + "\n\n".join(report_holdings)
+        + "\n\n〰〰〰〰〰〰〰〰〰〰〰\n\n".join(report_holdings)
         if report_holdings else ""
     )
     watch_str = (
         "\n\n*━━━━━ 👀 WATCHLIST ━━━━━*\n\n"
-        + "\n\n".join(report_watchlist)
+        + "\n\n〰〰〰〰〰〰〰〰〰〰〰\n\n".join(report_watchlist)
         if report_watchlist else ""
     )
 
