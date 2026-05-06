@@ -150,7 +150,6 @@ def build_holding_card(name, alert_icon, trend_icon, current_price, ath_price,
         f"│ Einstand: `{fmt_eur(buy_price)} €`  →  "
         f"Aktuell: `{fmt_eur(current_price)} €`\n"
         f"│ {qty_str} Stk · Wert: `{fmt_eur(current_value)} €`\n"
-        f"└────────────────────────"
     )
 
     # Drawdown block with visual bar
@@ -172,6 +171,7 @@ def build_holding_card(name, alert_icon, trend_icon, current_price, ath_price,
     ytd_block = (
         f"📅 YTD: {ytd_dot} *{fmt_pct(ytd_pct)}%*  "
         f"│  Max DD: `{fmt_pct(max_dd_ytd)}%`"
+        f"└──────────────────"
     )
 
     card = (
@@ -227,7 +227,7 @@ def build_header(total_value, total_invested, total_pl, total_pl_pct,
         f"│    ({fmt_pct(total_pl_pct)}%) {pl_arrow}\n"
         f"│\n"
         f"│ {ytd_dot} YTD: *{fmt_pct(portfolio_ytd_pct)}%*\n"
-        f"└────────────────────────\n"
+        f"└──────────────────\n"
     )
     return header
 
