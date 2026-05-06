@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETF Portfolio Manager</title>
+<style>
+/* ── TOKENS ─────────────────────────────────────────────────── */
+:root {
+  --bg:           #0f1117;
+  --surface:      #181c27;
+  --surface2:     #1f2436;
+  --surface3:     #252b40;
+  --border:       rgba(255,255,255,0.07);
+  --border2:      rgba(255,255,255,0.12);
+  --text:         #e8eaf0;
+  --text2:        #8b92a8;
+  --text3:        #5a6070;
+  --blue:         #4f8ef7;
+  --blue-dim:     rgba(79,142,247,0.12);
+  --blue-glow:    rgba(79,142,247,0.25);
+  --amber:        #f5a623;
+  --amber-dim:    rgba(245,166,35,0.12);
+  --amber-glow:   rgba(245,166,35,0.25);
+  --green:        #34c785;
+  --green-dim:    rgba(52,199,133,0.12);
+  --red:          #f25f5c;
+  --red-dim:      rgba(242,95,92,0.12);
+  --radius:       14px;
+  --radius-sm:    9px;
+  --radius-xs:    6px;
+  --font:         'DM Sans', system-ui, sans-serif;
+  --font-mono:    'DM Mono', 'Fira Code', monospace;
+}
+
+/* ── RESET ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── GOOGLE FONTS ───────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── BASE ───────────────────────────────────────────────────── */
+html { font-size: 15px; scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(15,17,23,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.5rem;
+  height: 60px;
+  display: flex; align-items: center;
+}
+.header-inner {
+  max-width: 1100px; width: 100%; margin: 0 auto;
+  display: flex; align-items: center; gap: 1.25rem;
+}
+.logo {
+  font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 0.5rem; flex: 1;
+}
+.logo-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--blue); display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.logo-sub { color: var(--text2); font-weight: 400; font-size: 0.8rem; margin-left: 0.25rem; }
+
+/* ── STAT CHIPS ─────────────────────────────────────────────── */
+.stat-chips { display: flex; gap: 0.5rem; }
+.stat-chip {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; font-size: 0.75rem;
+}
+.stat-chip-label { color: var(--text2); }
+.stat-chip-val { font-weight: 600; font-family: var(--font-mono); color: var(--text); }
+.stat-chip-val.blue { color: var(--blue); }
+.stat-chip-val.amber { color: var(--amber); }
+
+/* ── LAYOUT ─────────────────────────────────────────────────── */
+.main {
+  max-width: 1100px; margin: 0 auto;
+  padding: 1.75rem 1.5rem;
+  display: flex; flex-direction: column; gap: 1.25rem;
+}
+
+/* ── CARD ───────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.card-head {
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+}
+.card-title {
+  font-size: 0.875rem; font-weight: 600;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-title-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; flex-shrink: 0;
+}
+.icon-blue  { background: var(--blue-dim);  color: var(--blue);  }
+.icon-amber { background: var(--amber-dim); color: var(--amber); }
+.icon-green { background: var(--green-dim); color: var(--green); }
+.card-body { padding: 1.5rem; }
+
+/* ── BUTTONS ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.5rem 1rem; border-radius: var(--radius-sm);
+  border: none; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  font-family: var(--font); letter-spacing: 0.01em;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #6aa0f9; box-shadow: 0 0 0 3px var(--blue-glow); }
+
+.btn-amber { background: var(--amber); color: #111; }
+.btn-amber:hover:not(:disabled) { background: #f7b84e; box-shadow: 0 0 0 3px var(--amber-glow); }
+
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover:not(:disabled) { background: #4fcf94; }
+
+.btn-ghost {
+  background: transparent; color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+.btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(242,95,92,0.2); }
+.btn-danger:hover:not(:disabled) { background: rgba(242,95,92,0.2); }
+
+.btn-sm { padding: 0.3rem 0.65rem; font-size: 0.75rem; border-radius: var(--radius-xs); }
+.btn-xs { padding: 0.2rem 0.5rem; font-size: 0.7rem; border-radius: 5px; }
+
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+/* ── IMPORT ZONE ─────────────────────────────────────────────── */
+.import-zone {
+  border: 2px dashed var(--border2); border-radius: var(--radius);
+  padding: 3rem 2rem; text-align: center;
+  cursor: pointer; transition: all 0.2s;
+}
+.import-zone:hover, .import-zone.drag-over {
+  border-color: var(--blue); background: var(--blue-dim);
+}
+.import-icon { font-size: 2.25rem; margin-bottom: 0.75rem; }
+.import-text { color: var(--text2); font-size: 0.875rem; margin-bottom: 1.25rem; line-height: 1.6; }
+.import-text strong { color: var(--text); }
+.import-error {
+  margin-top: 1rem; padding: 0.75rem 1rem;
+  background: var(--red-dim); border: 1px solid rgba(242,95,92,0.25);
+  border-radius: var(--radius-sm); color: var(--red);
+  font-size: 0.8rem; display: none;
+}
+
+/* ── FORM ───────────────────────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.form-group.span2 { grid-column: span 2; }
+
+label {
+  font-size: 0.7rem; font-weight: 600;
+  color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em;
+}
+input, select {
+  width: 100%; padding: 0.55rem 0.85rem;
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: var(--font); font-size: 0.875rem;
+  transition: border-color 0.15s, box-shadow 0.15s; outline: none;
+}
+input::placeholder { color: var(--text3); }
+input:focus, select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-glow);
+}
+input.err { border-color: var(--red); }
+input.err:focus { box-shadow: 0 0 0 3px var(--red-dim); }
+
+select option { background: var(--surface2); color: var(--text); }
+
+.field-hint { font-size: 0.7rem; color: var(--text3); margin-top: 0.2rem; }
+.field-error { font-size: 0.72rem; color: var(--red); margin-top: 0.2rem; min-height: 1rem; }
+
+/* ── LIVE PREVIEW BOX ────────────────────────────────────────── */
+.live-box {
+  margin-top: 1.25rem; padding: 1rem 1.25rem;
+  background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.2);
+  border-radius: var(--radius-sm); display: none;
+}
+.live-box.visible { display: block; }
+.live-box-title {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--amber); margin-bottom: 0.85rem;
+}
+.live-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem 1rem; }
+.live-item label { color: rgba(245,166,35,0.7); }
+.live-item .lval {
+  font-size: 0.95rem; font-weight: 700;
+  font-family: var(--font-mono); color: var(--text);
+}
+.live-item .lval.highlight { color: var(--amber); }
+
+/* ── TABLE ──────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+thead { background: var(--surface2); }
+th {
+  text-align: left; padding: 0.7rem 1rem;
+  font-size: 0.68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text3); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: background 0.1s; }
+tbody tr:hover td { background: var(--surface2); }
+
+/* ── BADGES ─────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center;
+  font-size: 0.68rem; font-weight: 700;
+  padding: 0.18rem 0.5rem; border-radius: 4px;
+  font-family: var(--font-mono); letter-spacing: 0.02em;
+}
+.badge-blue  { background: var(--blue-dim);  color: var(--blue);  }
+.badge-amber { background: var(--amber-dim); color: var(--amber); }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-gray  { background: var(--surface3);  color: var(--text2); }
+
+.ticker-tag {
+  display: inline-flex; align-items: center;
+  background: var(--surface3); color: var(--blue);
+  font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600;
+  padding: 0.22rem 0.6rem; border-radius: var(--radius-xs);
+  border: 1px solid var(--border2); letter-spacing: 0.02em;
+}
+
+/* ── ARROW INDICATOR ─────────────────────────────────────────── */
+.arr { display: inline-flex; align-items: center; color: var(--text3); padding: 0 0.35rem; font-size: 0.75rem; }
+
+/* ── MONO NUM ────────────────────────────────────────────────── */
+.num { font-family: var(--font-mono); }
+
+/* ── EMPTY STATE ─────────────────────────────────────────────── */
+.empty {
+  text-align: center; padding: 2.5rem 1rem;
+  color: var(--text3);
+}
+.empty-icon { font-size: 2rem; margin-bottom: 0.6rem; opacity: 0.5; }
+.empty p { font-size: 0.85rem; }
+
+/* ── PREVIEW CARD ────────────────────────────────────────────── */
+#previewCard { display: none; }
+#previewCard.visible { display: block; }
+
+.preview-new td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+.preview-buy td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+
+/* ── JSON BLOCK ──────────────────────────────────────────────── */
+#exportCard { display: none; }
+#exportCard.visible { display: block; }
+
+.json-block {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 1.25rem;
+  font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.7;
+  overflow-x: auto; max-height: 380px; overflow-y: auto;
+  white-space: pre;
+}
+.jk  { color: #7ea8ff; }   /* key   */
+.js  { color: #7dde9a; }   /* string */
+.jn  { color: #fbbf24; }   /* number */
+.jp  { color: var(--text2); } /* punctuation */
+
+/* ── MODAL ───────────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); width: 100%; max-width: 520px;
+  max-height: 90vh; overflow-y: auto;
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.2s;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+.overlay.open .modal { transform: translateY(0) scale(1); }
+
+.modal-head {
+  padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+}
+.modal-title { font-size: 0.925rem; font-weight: 700; }
+.modal-body { padding: 1.5rem; }
+
+/* ── INFO ROW ────────────────────────────────────────────────── */
+.info-row {
+  display: flex; gap: 0; flex-wrap: wrap;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.info-cell {
+  flex: 1; min-width: 90px;
+  padding: 0.7rem 1rem; display: flex; flex-direction: column; gap: 0.2rem;
+  border-right: 1px solid var(--border);
+}
+.info-cell:last-child { border-right: none; }
+.info-cell label { font-size: 0.65rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.info-cell .ival { font-size: 0.875rem; font-weight: 700; font-family: var(--font-mono); color: var(--text); }
+
+/* ── TOAST ───────────────────────────────────────────────────── */
+#toasts {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  z-index: 999; display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end;
+}
+.toast {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.65rem 1rem; border-radius: var(--radius-sm);
+  font-size: 0.8rem; font-weight: 500; max-width: 300px;
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--text);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  animation: toastIn 0.2s ease;
+}
+.toast.ok  { border-color: rgba(52,199,133,0.35); background: var(--green-dim); color: var(--green); }
+.toast.err { border-color: rgba(242,95,92,0.35);  background: var(--red-dim);  color: var(--red);  }
+.toast.warn { border-color: rgba(245,166,35,0.35); background: var(--amber-dim); color: var(--amber); }
+
+@keyframes toastIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes toastOut { to { transform: translateX(20px); opacity: 0; } }
+
+/* ── TOGGLE FORM SECTION ─────────────────────────────────────── */
+.toggle-body { display: none; }
+.toggle-body.open { display: block; }
+
+/* ── SECTION SEPARATOR ───────────────────────────────────────── */
+.sep {
+  display: flex; align-items: center; gap: 0.75rem;
+  color: var(--text3); font-size: 0.7rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  margin: 0.25rem 0;
+}
+.sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── SCROLLBAR ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .main { padding: 1rem; }
+  .card-body { padding: 1rem; }
+  .card-head { padding: 0.9rem 1rem; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.span2 { grid-column: span 1; }
+  .stat-chips { display: none; }
+  th, td { padding: 0.6rem 0.75rem; }
+  .live-grid { grid-template-columns: 1fr; }
+  .info-row { flex-direction: column; }
+  .info-cell { border-right: none; border-bottom: 1px solid var(--border); }
+  .info-cell:last-child { border-bottom: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      ETF Portfolio Manager
+      <span class="logo-sub">Monitor-JSON Generator</span>
+    </div>
+    <div class="stat-chips">
+      <div class="stat-chip">
+        <span class="stat-chip-label">Positionen</span>
+        <span class="stat-chip-val blue" id="hPositionen">—</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-label">Investiert</span>
+        <span class="stat-chip-val" id="hInvestiert">—</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-label">Ausstehend</span>
+        <span class="stat-chip-val amber" id="hPending">0</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- ── IMPORT CARD ─────────────────────────────────────── -->
+  <div class="card" id="importCard">
+    <div class="card-body">
+      <div class="import-zone" id="importZone">
+        <div class="import-icon">📁</div>
+        <p class="import-text">
+          <strong>portfolio.json laden</strong><br>
+          Ziehe die Datei hierher oder klicke zum Auswählen<br>
+          <span style="font-size:0.78rem;color:var(--text3);">Format: Yahoo Finance Ticker als Key (z.B. SPPW.DE)</span>
+        </p>
+        <div class="btn-row" style="justify-content:center;gap:0.75rem;">
+          <button class="btn btn-primary" onclick="el('fileInput').click()">📂 JSON laden</button>
+          <button class="btn btn-ghost" onclick="startEmpty()">✨ Leeres Portfolio</button>
+        </div>
+        <input type="file" id="fileInput" accept=".json,application/json" style="display:none">
+      </div>
+      <div class="import-error" id="importError"></div>
+    </div>
+  </div>
+
+  <!-- ── PORTFOLIO TABLE ─────────────────────────────────── -->
+  <div class="card" id="portfolioCard" style="display:none">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="card-title-icon icon-blue">💼</div>
+        Bestandspositionen
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="el('fileInput').click()">🔄 Andere Datei</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Ticker</th>
+          <th>Name</th>
+          <th class="num">Einstandspreis</th>
+          <th class="num">Menge</th>
+          <th class="num">Investiert</th>
+          <th>Währung</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="portfolioBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── ADD NEW POSITION ────────────────────────────────── -->
+  <div class="card" id="addCard" style="display:none">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="card-title-icon icon-blue">➕</div>
+        Neue ETF-Position
+      </div>
+      <button class="btn btn-ghost btn-sm" id="toggleAddBtn" onclick="toggleAddForm()">▼ Formular</button>
+    </div>
+    <div class="toggle-body open" id="addFormWrap">
+      <div class="card-body">
+        <form id="addForm" novalidate>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="nTicker">Yahoo Finance Ticker *</label>
+              <input id="nTicker" placeholder="z.B. SPPW.DE" autocomplete="off">
+              <div class="field-error" id="eTicker"></div>
+            </div>
+            <div class="form-group span2" style="grid-column:auto">
+              <label for="nName">ETF Name *</label>
+              <input id="nName" placeholder="z.B. SPDR MSCI World" autocomplete="off">
+              <div class="field-error" id="eName"></div>
+            </div>
+            <div class="form-group">
+              <label for="nPrice">Kaufkurs *</label>
+              <input id="nPrice" placeholder="38,777" inputmode="decimal">
+              <div class="field-hint">Komma oder Punkt als Dezimalzeichen</div>
+              <div class="field-error" id="ePrice"></div>
+            </div>
+            <div class="form-group">
+              <label for="nQty">Menge *</label>
+              <input id="nQty" placeholder="213" inputmode="decimal">
+              <div class="field-hint">Bruchteile erlaubt (z.B. 2,8457)</div>
+              <div class="field-error" id="eQty"></div>
+            </div>
+            <div class="form-group">
+              <label for="nCur">Währung</label>
+              <select id="nCur">
+                <option value="EUR">EUR — Euro</option>
+                <option value="CHF">CHF — Schweizer Franken</option>
+                <option value="GBP">GBP — Britisches Pfund</option>
+                <option value="USD">USD — US-Dollar</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Live preview for new position -->
+          <div class="live-box" id="newLiveBox">
+            <div class="live-box-title">🧮 Vorschau Investition</div>
+            <div class="live-grid">
+              <div class="live-item"><label>Kaufkurs</label><div class="lval" id="nlPrice">—</div></div>
+              <div class="live-item"><label>Investitionsbetrag</label><div class="lval highlight" id="nlInvest">—</div></div>
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top:1.25rem;">
+            <button type="submit" class="btn btn-primary">➕ Zur Vorschau</button>
+            <button type="button" class="btn btn-ghost" onclick="resetAddForm()">✕ Reset</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PREVIEW / PENDING CHANGES ──────────────────────── -->
+  <div class="card" id="previewCard">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="card-title-icon icon-amber">👁</div>
+        Ausstehende Änderungen
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" id="saveBtn" onclick="saveAndExport()">💾 Speichern & JSON exportieren</button>
+        <button class="btn btn-ghost btn-sm" onclick="discardAll()">✕ Alle verwerfen</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Typ</th>
+          <th>Ticker</th>
+          <th>Name</th>
+          <th class="num">Einstandspreis</th>
+          <th class="num">Menge</th>
+          <th class="num">Investiert</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── JSON EXPORT OUTPUT ──────────────────────────────── -->
+  <div class="card" id="exportCard">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="card-title-icon icon-green">✅</div>
+        Exportiertes JSON
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="downloadAgain()">⬇ Erneut herunterladen</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyJson()">📋 Kopieren</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="json-block" id="jsonBlock"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── NACHKAUFEN MODAL ──────────────────────────────────────── -->
+<div class="overlay" id="buyOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">📈 Nachkaufen</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕ Schließen</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-row" id="modalInfo"></div>
+      <form id="buyForm" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="bPrice">Kaufkurs *</label>
+            <input id="bPrice" placeholder="42,50" inputmode="decimal">
+            <div class="field-hint">Komma oder Punkt</div>
+            <div class="field-error" id="eBPrice"></div>
+          </div>
+          <div class="form-group">
+            <label for="bQty">Menge *</label>
+            <input id="bQty" placeholder="10" inputmode="decimal">
+            <div class="field-hint">Bruchteile erlaubt</div>
+            <div class="field-error" id="eBQty"></div>
+          </div>
+        </div>
+
+        <div class="live-box visible" id="buyLiveBox" style="display:none">
+          <div class="live-box-title">🧮 Weighted Average Cost — Berechnung</div>
+          <div class="live-grid">
+            <div class="live-item"><label>Neuer Einstandspreis</label><div class="lval highlight" id="blNewPrice">—</div></div>
+            <div class="live-item"><label>Neue Gesamtmenge</label><div class="lval" id="blNewQty">—</div></div>
+            <div class="live-item"><label>Dieser Kauf</label><div class="lval" id="blThisInvest">—</div></div>
+            <div class="live-item"><label>Gesamtinvestiert neu</label><div class="lval" id="blTotalInvest">—</div></div>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:1.25rem;">
+          <button type="submit" class="btn btn-amber">📈 Zur Vorschau hinzufügen</button>
+          <button type="button" class="btn btn-ghost" onclick="closeModal()">Abbrechen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOASTS ────────────────────────────────────────────────── -->
+<div id="toasts"></div>
+
+<script>
+'use strict';
+
+/* ── STATE ────────────────────────────────────────────────────── */
+const S = {
+  portfolio: {},      // { TICKER: { name, buy_price, quantity, currency } }
+  pending: [],        // array of change objects
+  activeTicker: null, // ticker open in buy modal
+  lastJson: '',       // last exported json string
+};
+
+/* ── DOM SHORTHAND ────────────────────────────────────────────── */
+const el = id => document.getElementById(id);
+
+/* ── NUMBER HELPERS ───────────────────────────────────────────── */
+function parseNum(s) {
+  if (s === null || s === undefined) return NaN;
+  s = String(s).trim().replace(/\s/g, '');
+  // detect decimal separator: whichever appears last
+  const di = s.lastIndexOf('.');
+  const ci = s.lastIndexOf(',');
+  if (ci > di) {
+    // German format: 1.234,56
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    // English / no-comma format
+    s = s.replace(/,/g, '');
+  }
+  return parseFloat(s);
+}
+
+function fmtDE(n, dec = 2) {
+  if (!isFinite(n)) return '—';
+  return n.toLocaleString('de-DE', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+// Smart: show 2–4 decimals, trim unnecessary trailing zeros
+function fmtSmart(n) {
+  if (!isFinite(n)) return '—';
+  // Try 4 decimals, remove trailing zeros after 2
+  let s = n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return s;
+}
+
+function round4(n) { return Math.round(n * 1e4) / 1e4; }
+
+function wac(oldQty, oldP, addQty, addP) {
+  const total = oldQty + addQty;
+  return total === 0 ? 0 : (oldQty * oldP + addQty * addP) / total;
+}
+
+/* ── CURRENCY ─────────────────────────────────────────────────── */
+const CURRENCY_SYMBOLS = { EUR: '€', CHF: 'Fr.', GBP: '£', USD: '$' };
+
+function tickerCurrency(ticker) {
+  if (!ticker) return 'EUR';
+  const t = ticker.toUpperCase();
+  if (t.endsWith('.SW')) return 'CHF';
+  if (t.endsWith('.L'))  return 'GBP';
+  if (t.endsWith('.US')) return 'USD';
+  return 'EUR';
+}
+
+function sym(currency) { return CURRENCY_SYMBOLS[currency] || currency; }
+
+function fmtMoney(n, currency, dec = 2) {
+  return `${sym(currency)} ${fmtDE(n, dec)}`;
+}
+
+/* ── ESCAPE ───────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ── TOAST ────────────────────────────────────────────────────── */
+function toast(msg, type = '', dur = 3000) {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icons = { ok: '✔', err: '✕', warn: '⚠' };
+  t.innerHTML = `${icons[type] || 'ℹ'} ${msg}`;
+  el('toasts').appendChild(t);
+  setTimeout(() => {
+    t.style.animation = 'toastOut 0.25s ease forwards';
+    setTimeout(() => t.remove(), 260);
+  }, dur);
+}
+
+/* ── JSON SYNTAX HIGHLIGHT ────────────────────────────────────── */
+function highlight(json) {
+  // Escape HTML chars first using safe method
+  const escaped = json
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return escaped.replace(
+    /("(?:\\.|[^"\\])*")\s*(:)?|(\btrue\b|\bfalse\b|\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}[\],])/g,
+    (match, str, colon, kw, num, punc) => {
+      if (str && colon) return `<span class="jk">${str}</span><span class="jp">:</span>`;
+      if (str)  return `<span class="js">${str}</span>`;
+      if (kw)   return `<span class="jn">${kw}</span>`;
+      if (num !== undefined && num !== null && num !== '') return `<span class="jn">${num}</span>`;
+      if (punc) return `<span class="jp">${punc}</span>`;
+      return match;
+    }
+  );
+}
+
+/* ── HEADER STATS ─────────────────────────────────────────────── */
+function updateHeader() {
+  const positions = Object.keys(S.portfolio).filter(k => S.portfolio[k].quantity > 0);
+  el('hPositionen').textContent = positions.length;
+
+  // Sum invested in EUR only (simplified: cross-currency shown separately)
+  let inv = 0;
+  Object.values(S.portfolio).forEach(p => { if (p.quantity > 0) inv += p.buy_price * p.quantity; });
+  el('hInvestiert').textContent = inv > 0 ? `€ ${fmtDE(inv)}` : '—';
+  el('hPending').textContent = S.pending.length;
+}
+
+/* ── SHOW MAIN UI ─────────────────────────────────────────────── */
+function showUI() {
+  el('importCard').style.display  = 'none';
+  el('portfolioCard').style.display = '';
+  el('addCard').style.display       = '';
+}
+
+/* ── PORTFOLIO TABLE ──────────────────────────────────────────── */
+function renderPortfolio() {
+  const tbody = el('portfolioBody');
+  tbody.innerHTML = '';
+  const tickers = Object.keys(S.portfolio);
+
+  if (tickers.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7">
+      <div class="empty"><div class="empty-icon">📭</div>
+      <p>Keine Positionen — füge eine neue ETF-Position hinzu.</p></div></td></tr>`;
+    return;
+  }
+
+  tickers.forEach(ticker => {
+    const p = S.portfolio[ticker];
+    const c = p.currency || tickerCurrency(ticker);
+    const invested = p.buy_price * p.quantity;
+    const isWatchlist = p.quantity === 0;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="ticker-tag">${esc(ticker)}</span></td>
+      <td>${esc(p.name)}${isWatchlist ? ' <span class="badge badge-gray" style="margin-left:4px">Watchlist</span>' : ''}</td>
+      <td class="num">${isWatchlist ? '—' : fmtSmart(p.buy_price) + ' ' + sym(c)}</td>
+      <td class="num">${isWatchlist ? '—' : fmtDE(p.quantity, 4)}</td>
+      <td class="num">${isWatchlist ? '—' : fmtMoney(invested, c)}</td>
+      <td><span class="badge badge-gray">${esc(c)}</span></td>
+      <td>
+        <button class="btn btn-amber btn-sm nk-btn" data-ticker="${esc(ticker)}">
+          📈 ${isWatchlist ? 'Position eröffnen' : 'Nachkaufen'}
+        </button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.nk-btn').forEach(btn =>
+    btn.addEventListener('click', () => openBuyModal(btn.dataset.ticker))
+  );
+}
+
+/* ── PREVIEW TABLE ────────────────────────────────────────────── */
+function renderPreview() {
+  const tbody = el('previewBody');
+  tbody.innerHTML = '';
+  const card = el('previewCard');
+
+  if (S.pending.length === 0) {
+    card.classList.remove('visible');
+    updateHeader();
+    return;
+  }
+  card.classList.add('visible');
+
+  S.pending.forEach((ch, idx) => {
+    const tr = document.createElement('tr');
+    const c  = ch.currency || 'EUR';
+    const s  = sym(c);
+
+    if (ch.type === 'new') {
+      const inv = ch.buy_price * ch.quantity;
+      tr.className = 'preview-new';
+      tr.innerHTML = `
+        <td><span class="badge badge-blue">NEU</span></td>
+        <td><span class="ticker-tag">${esc(ch.ticker)}</span></td>
+        <td>${esc(ch.name)}</td>
+        <td class="num">${fmtSmart(ch.buy_price)} ${s}</td>
+        <td class="num">${fmtDE(ch.quantity, 4)}</td>
+        <td class="num">${fmtMoney(inv, c)}</td>
+        <td><button class="btn btn-danger btn-xs rm-btn" data-idx="${idx}">✕</button></td>`;
+
+    } else { // buymore
+      const newQty   = ch.oldQty + ch.addQty;
+      const newPrice = round4(wac(ch.oldQty, ch.oldPrice, ch.addQty, ch.addPrice));
+      const newInv   = newPrice * newQty;
+      const deltaInv = ch.addPrice * ch.addQty;
+
+      tr.className = 'preview-buy';
+      tr.innerHTML = `
+        <td><span class="badge badge-amber">NACHKAUF</span></td>
+        <td><span class="ticker-tag">${esc(ch.ticker)}</span></td>
+        <td>${esc(ch.name)}</td>
+        <td class="num">
+          <span style="color:var(--text3)">${fmtSmart(ch.oldPrice)}</span>
+          <span class="arr">→</span>
+          <strong style="color:var(--amber)">${fmtSmart(newPrice)} ${s}</strong>
+        </td>
+        <td class="num">
+          <span style="color:var(--text3)">${fmtDE(ch.oldQty, 4)}</span>
+          <span class="arr">→</span>
+          <strong>${fmtDE(newQty, 4)}</strong>
+        </td>
+        <td class="num">
+          <span style="color:var(--green)">+${fmtMoney(deltaInv, c)}</span>
+          <br><span style="font-size:0.72rem;color:var(--text3)">Ges: ${fmtMoney(newInv, c)}</span>
+        </td>
+        <td><button class="btn btn-danger btn-xs rm-btn" data-idx="${idx}">✕</button></td>`;
+    }
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.rm-btn').forEach(btn =>
+    btn.addEventListener('click', () => {
+      S.pending.splice(parseInt(btn.dataset.idx), 1);
+      renderPreview();
+      toast('Änderung entfernt', 'warn');
+    })
+  );
+  updateHeader();
+}
+
+/* ── FILE IMPORT ──────────────────────────────────────────────── */
+function loadJson(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const raw = e.target.result || '';
+      if (!raw.trim()) throw new Error('Datei ist leer');
+      const parsed = JSON.parse(raw);
+      if (typeof parsed !== 'object' || Array.isArray(parsed))
+        throw new Error('Erwartet ein JSON-Objekt (nicht Array)');
+
+      const portfolio = {};
+      for (const [ticker, data] of Object.entries(parsed)) {
+        if (typeof data !== 'object' || data === null) throw new Error(`Ungültiger Eintrag: ${ticker}`);
+        if (typeof data.buy_price !== 'number')  throw new Error(`buy_price fehlt bei ${ticker}`);
+        if (typeof data.quantity  !== 'number')  throw new Error(`quantity fehlt bei ${ticker}`);
+        if (typeof data.name      !== 'string')  throw new Error(`name fehlt bei ${ticker}`);
+        portfolio[ticker.toUpperCase().trim()] = {
+          name:      data.name,
+          buy_price: data.buy_price,
+          quantity:  data.quantity,
+          currency:  data.currency || tickerCurrency(ticker),
+        };
+      }
+      S.portfolio = portfolio;
+      S.pending   = [];
+      el('importError').style.display = 'none';
+      showUI();
+      renderPortfolio();
+      renderPreview();
+      updateHeader();
+      el('exportCard').classList.remove('visible');
+      toast(`${Object.keys(portfolio).length} Positionen geladen`, 'ok');
+    } catch (err) {
+      const errEl = el('importError');
+      errEl.textContent = '❌ ' + err.message;
+      errEl.style.display = 'block';
+      toast('JSON-Fehler: ' + err.message, 'err', 5000);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function startEmpty() {
+  S.portfolio = {};
+  S.pending   = [];
+  showUI();
+  renderPortfolio();
+  renderPreview();
+  updateHeader();
+  toast('Leeres Portfolio gestartet', 'ok');
+}
+
+/* ── FILE INPUT ───────────────────────────────────────────────── */
+el('fileInput').addEventListener('change', e => {
+  loadJson(e.target.files[0]);
+  e.target.value = ''; // allow re-selecting same file
+});
+
+/* ── DRAG AND DROP ────────────────────────────────────────────── */
+const zone = el('importZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  loadJson(e.dataTransfer.files[0]);
+});
+zone.addEventListener('click', e => {
+  if (!e.target.closest('button')) el('fileInput').click();
+});
+
+/* ── TOGGLE ADD FORM ──────────────────────────────────────────── */
+function toggleAddForm() {
+  const wrap = el('addFormWrap');
+  const btn  = el('toggleAddBtn');
+  const open = wrap.classList.toggle('open');
+  btn.textContent = open ? '▲ Ausblenden' : '▼ Formular';
+}
+
+/* ── NEW POSITION FORM ────────────────────────────────────────── */
+function clearErr(inputId, errId) {
+  el(inputId).classList.remove('err');
+  el(errId).textContent = '';
+}
+function setErr(inputId, errId, msg) {
+  el(inputId).classList.add('err');
+  el(errId).textContent = msg;
+}
+
+// Auto-uppercase ticker + auto-suggest currency
+el('nTicker').addEventListener('input', function() {
+  const pos = this.selectionStart;
+  this.value = this.value.toUpperCase();
+  try { this.setSelectionRange(pos, pos); } catch(e) {}
+  el('nCur').value = tickerCurrency(this.value);
+  clearErr('nTicker', 'eTicker');
+});
+
+// Live preview for new position
+function updateNewLive() {
+  const p = parseNum(el('nPrice').value);
+  const q = parseNum(el('nQty').value);
+  const c = el('nCur').value;
+  const s = sym(c);
+  const box = el('newLiveBox');
+  if (isFinite(p) && p > 0 && isFinite(q) && q > 0) {
+    el('nlPrice').textContent  = `${s} ${fmtSmart(p)}`;
+    el('nlInvest').textContent = `${s} ${fmtDE(p * q, 2)}`;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+el('nPrice').addEventListener('input', updateNewLive);
+el('nQty').addEventListener('input', updateNewLive);
+el('nCur').addEventListener('change', updateNewLive);
+
+el('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  let valid = true;
+
+  const ticker   = el('nTicker').value.toUpperCase().trim();
+  const name     = el('nName').value.trim();
+  const price    = parseNum(el('nPrice').value);
+  const qty      = parseNum(el('nQty').value);
+  const currency = el('nCur').value;
+
+  // Reset errors
+  ['nTicker','nName','nPrice','nQty'].forEach((id,i) =>
+    clearErr(id, ['eTicker','eName','ePrice','eQty'][i])
+  );
+
+  if (!ticker) {
+    setErr('nTicker', 'eTicker', 'Ticker ist Pflicht'); valid = false;
+  } else if (S.portfolio[ticker]) {
+    setErr('nTicker', 'eTicker', 'Ticker bereits im Portfolio — nutze "Nachkaufen"'); valid = false;
+  } else if (S.pending.some(p => p.type === 'new' && p.ticker === ticker)) {
+    setErr('nTicker', 'eTicker', 'Ticker bereits in der Vorschau'); valid = false;
+  }
+  if (!name) { setErr('nName', 'eName', 'Name ist Pflicht'); valid = false; }
+  if (!isFinite(price) || price <= 0) { setErr('nPrice', 'ePrice', 'Gültige positive Zahl erforderlich'); valid = false; }
+  if (!isFinite(qty) || qty <= 0)     { setErr('nQty',   'eQty',   'Gültige positive Zahl erforderlich'); valid = false; }
+
+  if (!valid) return;
+
+  S.pending.push({ type: 'new', ticker, name, buy_price: price, quantity: qty, currency });
+  renderPreview();
+  resetAddForm();
+  toast(`${ticker} zur Vorschau hinzugefügt`, 'ok');
+});
+
+function resetAddForm() {
+  el('addForm').reset();
+  ['nTicker','nName','nPrice','nQty'].forEach((id,i) =>
+    clearErr(id, ['eTicker','eName','ePrice','eQty'][i])
+  );
+  el('newLiveBox').style.display = 'none';
+}
+
+/* ── BUY MORE MODAL ───────────────────────────────────────────── */
+function openBuyModal(ticker) {
+  const p = S.portfolio[ticker];
+  if (!p) return;
+  S.activeTicker = ticker;
+  const c = p.currency || tickerCurrency(ticker);
+  const s = sym(c);
+  const invested = p.buy_price * p.quantity;
+  const isNew = p.quantity === 0;
+
+  el('modalTitle').textContent = `📈 ${isNew ? 'Position eröffnen' : 'Nachkaufen'} — ${ticker}`;
+
+  el('modalInfo').innerHTML = `
+    <div class="info-cell"><label>ETF</label><div class="ival">${esc(p.name)}</div></div>
+    ${!isNew ? `
+    <div class="info-cell"><label>Einstandspreis</label><div class="ival">${s} ${fmtSmart(p.buy_price)}</div></div>
+    <div class="info-cell"><label>Menge</label><div class="ival">${fmtDE(p.quantity, 4)}</div></div>
+    <div class="info-cell"><label>Investiert</label><div class="ival">${s} ${fmtDE(invested, 2)}</div></div>
+    ` : `<div class="info-cell"><label>Status</label><div class="ival" style="color:var(--amber)">Watchlist</div></div>`}
+  `;
+
+  // reset form
+  el('buyForm').reset();
+  clearErr('bPrice', 'eBPrice');
+  clearErr('bQty', 'eBQty');
+  el('buyLiveBox').style.display = 'none';
+
+  el('buyOverlay').classList.add('open');
+  setTimeout(() => el('bPrice').focus(), 80);
+}
+
+function closeModal() {
+  el('buyOverlay').classList.remove('open');
+  S.activeTicker = null;
+}
+
+function overlayClick(e) {
+  if (e.target === el('buyOverlay')) closeModal();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// Live preview inside modal
+function updateBuyLive() {
+  const ticker = S.activeTicker;
+  if (!ticker) return;
+  const p   = S.portfolio[ticker];
+  const c   = p.currency || tickerCurrency(ticker);
+  const s   = sym(c);
+  const np  = parseNum(el('bPrice').value);
+  const nq  = parseNum(el('bQty').value);
+  const box = el('buyLiveBox');
+
+  if (isFinite(np) && np > 0 && isFinite(nq) && nq > 0) {
+    const newAvg    = round4(wac(p.quantity, p.buy_price, nq, np));
+    const newTotQty = p.quantity + nq;
+    const thisInv   = np * nq;
+    const totInv    = newAvg * newTotQty;
+
+    el('blNewPrice').textContent   = `${s} ${fmtSmart(newAvg)}`;
+    el('blNewQty').textContent     = fmtDE(newTotQty, 4);
+    el('blThisInvest').textContent = `${s} ${fmtDE(thisInv, 2)}`;
+    el('blTotalInvest').textContent= `${s} ${fmtDE(totInv, 2)}`;
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+el('bPrice').addEventListener('input', updateBuyLive);
+el('bQty').addEventListener('input', updateBuyLive);
+
+el('buyForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const ticker = S.activeTicker;
+  if (!ticker) return;
+  let valid = true;
+
+  const addPrice = parseNum(el('bPrice').value);
+  const addQty   = parseNum(el('bQty').value);
+
+  clearErr('bPrice', 'eBPrice');
+  clearErr('bQty',   'eBQty');
+
+  if (!isFinite(addPrice) || addPrice <= 0) { setErr('bPrice', 'eBPrice', 'Gültige positive Zahl'); valid = false; }
+  if (!isFinite(addQty)   || addQty   <= 0) { setErr('bQty',   'eBQty',   'Gültige positive Zahl'); valid = false; }
+  if (!valid) return;
+
+  // Check if there's already a pending buymore for this ticker and merge
+  const existingIdx = S.pending.findIndex(
+    p => p.ticker === ticker && (p.type === 'buymore' || p.type === 'new_watchlist')
+  );
+
+  const pos = S.portfolio[ticker];
+  const c   = pos.currency || tickerCurrency(ticker);
+
+  // If ticker has 0 qty (watchlist), treat as first purchase
+  if (pos.quantity === 0) {
+    S.pending.push({
+      type: 'new',
+      ticker,
+      name: pos.name,
+      buy_price: addPrice,
+      quantity:  addQty,
+      currency:  c,
+      _fromWatchlist: true,
+    });
+  } else {
+    // Check if there's already a buymore for same ticker — stack them
+    const existing = S.pending.findIndex(p => p.type === 'buymore' && p.ticker === ticker);
+    if (existing >= 0) {
+      // Merge: compute new cumulative values
+      const prev = S.pending[existing];
+      const prevNewQty   = prev.oldQty + prev.addQty;
+      const prevNewPrice = wac(prev.oldQty, prev.oldPrice, prev.addQty, prev.addPrice);
+      S.pending[existing] = {
+        ...prev,
+        addQty:   prevNewQty - prev.oldQty + addQty, // total added
+        addPrice: wac(prevNewQty - prev.oldQty, prevNewPrice, addQty, addPrice),
+        // simpler: re-calculate from scratch relative to original
+        addQty:   prev.addQty + addQty,
+        addPrice: wac(prev.addQty, prev.addPrice, addQty, addPrice),
+      };
+    } else {
+      S.pending.push({
+        type:     'buymore',
+        ticker,
+        name:     pos.name,
+        oldPrice: pos.buy_price,
+        oldQty:   pos.quantity,
+        addPrice,
+        addQty,
+        currency: c,
+      });
+    }
+  }
+
+  closeModal();
+  renderPreview();
+  toast(`${ticker} zur Vorschau hinzugefügt`, 'ok');
+});
+
+/* ── DISCARD ALL ──────────────────────────────────────────────── */
+function discardAll() {
+  if (S.pending.length === 0) return;
+  S.pending = [];
+  renderPreview();
+  toast('Alle Änderungen verworfen', 'warn');
+}
+
+/* ── BUILD FINAL PORTFOLIO OBJECT ─────────────────────────────── */
+function buildFinalPortfolio() {
+  // Deep clone existing portfolio
+  const result = {};
+  for (const [k, v] of Object.entries(S.portfolio)) {
+    result[k] = { ...v };
+  }
+
+  for (const ch of S.pending) {
+    if (ch.type === 'new') {
+      if (ch._fromWatchlist) {
+        // Was a watchlist entry, now becomes real position
+        result[ch.ticker] = {
+          ...result[ch.ticker],
+          buy_price: round4(ch.buy_price),
+          quantity:  round4(ch.quantity),
+        };
+      } else {
+        result[ch.ticker] = {
+          name:      ch.name,
+          buy_price: round4(ch.buy_price),
+          quantity:  round4(ch.quantity),
+          currency:  ch.currency,
+        };
+      }
+    } else if (ch.type === 'buymore') {
+      const cur = result[ch.ticker];
+      const newQty   = round4(cur.quantity + ch.addQty);
+      const newPrice = round4(wac(cur.quantity, cur.buy_price, ch.addQty, ch.addPrice));
+      result[ch.ticker] = {
+        ...cur,
+        buy_price: newPrice,
+        quantity:  newQty,
+      };
+    }
+  }
+  return result;
+}
+
+/* ── BUILD JSON STRING ────────────────────────────────────────── */
+function buildJsonString(portfolio) {
+  // Custom serialization: no 'currency' field in output (monitor script derives it from ticker)
+  const clean = {};
+  for (const [ticker, data] of Object.entries(portfolio)) {
+    clean[ticker] = {
+      name:      data.name,
+      buy_price: data.buy_price,
+      quantity:  data.quantity,
+    };
+  }
+  return JSON.stringify(clean, null, 2);
+}
+
+/* ── SAVE & EXPORT ────────────────────────────────────────────── */
+function saveAndExport() {
+  if (S.pending.length === 0) { toast('Keine ausstehenden Änderungen', 'warn'); return; }
+
+  const final = buildFinalPortfolio();
+  const jsonStr = buildJsonString(final);
+
+  // Apply to state
+  S.portfolio = {};
+  for (const [k, v] of Object.entries(final)) {
+    S.portfolio[k] = {
+      ...v,
+      currency: v.currency || tickerCurrency(k),
+    };
+  }
+  S.pending   = [];
+  S.lastJson  = jsonStr;
+
+  // Update UI
+  renderPortfolio();
+  renderPreview();
+  updateHeader();
+
+  // Show JSON
+  const exportCard = el('exportCard');
+  exportCard.classList.add('visible');
+  el('jsonBlock').innerHTML = highlight(jsonStr);
+  exportCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Download
+  triggerDownload(jsonStr);
+  toast('portfolio.json gespeichert & heruntergeladen', 'ok', 4000);
+}
+
+function triggerDownload(jsonStr) {
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'portfolio.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+function downloadAgain() {
+  if (!S.lastJson) { toast('Kein JSON vorhanden', 'warn'); return; }
+  triggerDownload(S.lastJson);
+  toast('Erneut heruntergeladen', 'ok');
+}
+
+function copyJson() {
+  if (!S.lastJson) { toast('Kein JSON vorhanden', 'warn'); return; }
+  navigator.clipboard.writeText(S.lastJson)
+    .then(() => toast('JSON in Zwischenablage kopiert', 'ok'))
+    .catch(() => toast('Kopieren fehlgeschlagen', 'err'));
+}
+</script>
+</body>
+</html>
